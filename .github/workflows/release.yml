@@ -28,12 +28,48 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Checkout (manual tag)
+      - name: Checkout (manual trigger)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: refs/tags/${{ inputs.tag }}
+
+      - name: Resolve manual tag ref
+        if: github.event_name == 'workflow_dispatch'
+        id: resolve_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT_TAG="${{ inputs.tag }}"
+          CANDIDATE_A="$INPUT_TAG"
+          CANDIDATE_B="$INPUT_TAG"
+
+          if [[ "$INPUT_TAG" == v* ]]; then
+            CANDIDATE_B="${INPUT_TAG#v}"
+          else
+            CANDIDATE_B="v${INPUT_TAG}"
+          fi
+
+          if git rev-parse -q --verify "refs/tags/${CANDIDATE_A}" >/dev/null; then
+            RESOLVED_TAG="$CANDIDATE_A"
+          elif git rev-parse -q --verify "refs/tags/${CANDIDATE_B}" >/dev/null; then
+            RESOLVED_TAG="$CANDIDATE_B"
+          else
+            echo "Could not find a tag matching '${INPUT_TAG}' or '${CANDIDATE_B}'."
+            echo "Available tags:"
+            git tag --list | tail -n 50
+            exit 1
+          fi
+
+          echo "Resolved tag: ${RESOLVED_TAG}"
+          echo "resolved_tag=${RESOLVED_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout resolved manual tag
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force "refs/tags/${{ steps.resolve_tag.outputs.resolved_tag }}"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -90,7 +126,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag }}
+          tag_name: ${{ steps.resolve_tag.outputs.resolved_tag }}
           files: |
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage
