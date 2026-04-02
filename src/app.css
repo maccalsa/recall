@@ -2,7 +2,7 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
   --color-surface: #1e1e2e;
   --color-surface-dim: #181825;
   --color-surface-bright: #313244;
@@ -10,6 +10,8 @@
   --color-text-dim: #a6adc8;
   --color-accent: #89b4fa;
   --color-accent-dim: #74c7ec;
+  --color-border: #45475a;
+  --color-success: #a6e3a1;
 }
 
 html,
@@ -33,5 +35,227 @@ body,
     --color-text-dim: #6c6f85;
     --color-accent: #1e66f5;
     --color-accent-dim: #209fb5;
+    --color-border: #bcc0cc;
+    --color-success: #40a02b;
   }
+}
+
+/* ── Shiki dual-theme: dark default, light via media query ── */
+
+html.dark .shiki,
+html.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .shiki,
+  .shiki span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .shiki,
+  .shiki span {
+    color: var(--shiki-light) !important;
+    background-color: var(--shiki-light-bg) !important;
+  }
+}
+
+/* ── Sheet content typography ── */
+
+.sheet-content {
+  padding: 1.25rem 1.5rem 2rem;
+  line-height: 1.6;
+}
+
+.sheet-content h1 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: var(--color-accent);
+}
+
+.sheet-content h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.sheet-content h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: var(--color-text-dim);
+}
+
+.sheet-content p {
+  margin: 0.5rem 0;
+  font-size: 0.8125rem;
+}
+
+.sheet-content ul,
+.sheet-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+}
+
+.sheet-content li + li {
+  margin-top: 0.25rem;
+}
+
+.sheet-content a {
+  color: var(--color-accent-dim);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sheet-content hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1rem 0;
+}
+
+/* ── Inline code ── */
+
+.sheet-content :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: var(--color-surface-bright);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+/* ── Code blocks ── */
+
+.code-block-wrapper {
+  position: relative;
+  margin: 0.5rem 0;
+}
+
+.code-block-wrapper pre {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  border: 1px solid var(--color-border);
+}
+
+.code-block-wrapper pre code {
+  font-family: inherit;
+  font-size: inherit;
+  background: none;
+  padding: 0;
+}
+
+/* ── Copy button ── */
+
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+  z-index: 1;
+}
+
+.code-block-wrapper:hover .copy-btn {
+  opacity: 1;
+}
+
+.copy-btn:hover {
+  background: var(--color-surface-bright);
+  color: var(--color-text);
+}
+
+.copy-btn.copied {
+  opacity: 1;
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+/* ── Collapsible sections ── */
+
+.collapsible-section {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.25rem;
+  margin-top: 0.75rem;
+}
+
+.collapsible-section:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.collapsible-section > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  user-select: none;
+}
+
+.collapsible-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-section > summary::before {
+  content: "▶";
+  font-size: 0.6rem;
+  color: var(--color-text-dim);
+  transition: transform 150ms ease;
+  flex-shrink: 0;
+}
+
+.collapsible-section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.collapsible-section > summary:hover h2 {
+  color: var(--color-accent);
+}
+
+/* ── Scrollbar ── */
+
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-bright) transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: var(--color-surface-bright);
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border);
 }

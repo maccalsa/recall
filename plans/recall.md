@@ -54,14 +54,14 @@ This phase proves the rendering pipeline end-to-end with a single file before ad
 
 ### Acceptance criteria
 
-- [ ] A markdown file from `~/.config/recall/cheats/` is rendered in the overlay window
-- [ ] Code blocks have syntax highlighting (via shiki)
-- [ ] Each code block has a copy button that copies the block contents to clipboard
-- [ ] H2 sections are collapsible (click to toggle)
-- [ ] Dark and light themes work and follow system `prefers-color-scheme`
-- [ ] Inter font for UI text, JetBrains Mono for code blocks
-- [ ] Long documents scroll smoothly within the overlay
-- [ ] The window remains within the performance budget (render complete in < 100ms)
+- [x] A markdown file from `~/.config/recall/cheats/` is rendered in the overlay window
+- [x] Code blocks have syntax highlighting (via shiki)
+- [x] Each code block has a copy button that copies the block contents to clipboard
+- [x] H2 sections are collapsible (click to toggle)
+- [x] Dark and light themes work and follow system `prefers-color-scheme`
+- [x] Inter font for UI text, JetBrains Mono for code blocks
+- [x] Long documents scroll smoothly within the overlay
+- [x] The window remains within the performance budget (render complete in < 100ms)
 
 ---
 

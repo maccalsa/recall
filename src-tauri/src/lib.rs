@@ -1,6 +1,13 @@
 use std::path::PathBuf;
 use tauri::Manager;
 
+fn cheats_dir() -> PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("recall")
+        .join("cheats")
+}
+
 fn toggle_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         if window.is_visible().unwrap_or(false) {
@@ -63,6 +70,37 @@ fn toggle_window(app: tauri::AppHandle) {
     toggle_main_window(&app);
 }
 
+#[tauri::command]
+fn read_cheat_file(filename: String) -> Result<String, String> {
+    let path = cheats_dir().join(&filename);
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read {}: {e}", path.display()))
+}
+
+#[tauri::command]
+fn list_cheat_files() -> Result<Vec<String>, String> {
+    let dir = cheats_dir();
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut files: Vec<String> = std::fs::read_dir(&dir)
+        .map_err(|e| format!("Failed to read cheats directory: {e}"))?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("md") {
+                path.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(String::from)
+            } else {
+                None
+            }
+        })
+        .collect();
+    files.sort();
+    Ok(files)
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -109,7 +147,11 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![toggle_window])
+        .invoke_handler(tauri::generate_handler![
+            toggle_window,
+            read_cheat_file,
+            list_cheat_files,
+        ])
         .build(tauri::generate_context!())
         .expect("error building tauri application");
 

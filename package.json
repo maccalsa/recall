@@ -15,9 +15,13 @@
     "format:check": "prettier --check 'src/**/*.{ts,svelte,css,html}' '*.{json,ts,js}'"
   },
   "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-global-shortcut": "^2.3.1",
-    "@tauri-apps/plugin-shell": "^2.3.5"
+    "@tauri-apps/plugin-shell": "^2.3.5",
+    "marked": "^17.0.5",
+    "shiki": "^4.0.2"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
