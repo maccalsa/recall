@@ -7,15 +7,20 @@
     index: MiniSearch<CheatDoc>;
     docs: CheatDoc[];
     onselect: (filename: string) => void;
+    initialQuery?: string;
   }
 
-  let { index, docs, onselect }: Props = $props();
+  let { index, docs, onselect, initialQuery = "" }: Props = $props();
 
   let query = $state("");
   let selectedIdx = $state(0);
   let recentFiles: string[] = $state([]);
   let pinnedFiles: string[] = $state([]);
   let inputEl: HTMLInputElement | undefined = $state();
+
+  $effect(() => {
+    query = initialQuery;
+  });
 
   $effect(() => {
     inputEl?.focus();

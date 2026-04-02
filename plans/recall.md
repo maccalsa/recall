@@ -101,16 +101,16 @@ Active window detection uses a strategy pattern: the Rust backend detects the di
 
 ### Acceptance criteria
 
-- [ ] On X11: active window class name is correctly detected via `xdotool`
-- [ ] On Wayland (Sway): active window app_id is correctly detected via `swaymsg`
-- [ ] On Wayland (Hyprland): active window class is correctly detected via `hyprctl`
-- [ ] On Wayland (GNOME): active window name is detected via D-Bus (best-effort)
-- [ ] `app-mappings.yaml` is read and used to resolve detected app → cheat sheet
-- [ ] If mapping found: sheet view opens directly for that cheat sheet
-- [ ] If no mapping found: palette opens with detected app name pre-filled
-- [ ] If detection fails entirely: palette opens empty (graceful degradation)
-- [ ] Double-press primary hotkey within 500ms re-opens last viewed sheet
-- [ ] Editing `app-mappings.yaml` is picked up without restart (file watching)
+- [x] On X11: active window class name is correctly detected via `xdotool`
+- [x] On Wayland (Sway): active window app_id is correctly detected via `swaymsg`
+- [x] On Wayland (Hyprland): active window class is correctly detected via `hyprctl`
+- [x] On Wayland (GNOME): active window name is detected via D-Bus (best-effort)
+- [x] `app-mappings.yaml` is read and used to resolve detected app → cheat sheet
+- [x] If mapping found: sheet view opens directly for that cheat sheet
+- [x] If no mapping found: palette opens with detected app name pre-filled
+- [x] If detection fails entirely: palette opens empty (graceful degradation)
+- [x] Double-press primary hotkey within 500ms re-opens last viewed sheet
+- [x] Editing `app-mappings.yaml` is picked up without restart (re-read on every toggle)
 
 ---
 

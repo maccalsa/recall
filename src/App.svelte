@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { listen } from "@tauri-apps/api/event";
   import { invoke } from "@tauri-apps/api/core";
   import type MiniSearch from "minisearch";
   import SheetView from "./lib/SheetView.svelte";
@@ -17,12 +18,20 @@
   let docs: CheatDoc[] = $state([]);
   let activeFile = $state("");
   let activeMarkdown = $state("");
+  let paletteQuery = $state("");
+  let lastViewedFile = $state("");
 
   let docSearchActive = $state(false);
   let docSearchQuery = $state("");
   let sheetEl: HTMLElement | undefined = $state();
   let matchMarks: HTMLElement[] = $state([]);
   let currentMatchIdx = $state(-1);
+
+  interface ContextPayload {
+    window_class: string | null;
+    mapped_cheat: string | null;
+    is_double_press: boolean;
+  }
 
   async function init() {
     if (!isTauri) {
@@ -39,15 +48,37 @@
       errorMsg = String(e);
       view = "error";
     }
+
+    listen<ContextPayload>("recall://context", (event) => {
+      handleContext(event.payload);
+    });
   }
 
   init();
+
+  async function handleContext(ctx: ContextPayload) {
+    if (view === "loading" || view === "error") return;
+
+    if (ctx.is_double_press && lastViewedFile) {
+      openSheet(lastViewedFile);
+      return;
+    }
+
+    if (ctx.mapped_cheat) {
+      openSheet(ctx.mapped_cheat);
+      return;
+    }
+
+    paletteQuery = ctx.window_class ?? "";
+    view = "palette";
+  }
 
   async function openSheet(filename: string) {
     try {
       const raw = await invoke<string>("read_cheat_file", { filename });
       activeFile = filename;
       activeMarkdown = raw;
+      lastViewedFile = filename;
       view = "sheet";
       docSearchActive = false;
       docSearchQuery = "";
@@ -62,6 +93,7 @@
     view = "palette";
     activeFile = "";
     activeMarkdown = "";
+    paletteQuery = "";
     docSearchActive = false;
     docSearchQuery = "";
   }
@@ -225,7 +257,12 @@
       </p>
     </div>
   {:else if view === "palette" && index}
-    <PaletteView {index} {docs} onselect={openSheet} />
+    <PaletteView
+      {index}
+      {docs}
+      onselect={openSheet}
+      initialQuery={paletteQuery}
+    />
   {:else if view === "sheet"}
     <div class="flex items-center border-b border-(--color-border) px-3 py-1.5">
       <button
@@ -268,7 +305,9 @@
           }}
         />
         {#if matchMarks.length > 0}
-          <span class="shrink-0 text-[11px] tabular-nums text-(--color-text-dim)">
+          <span
+            class="shrink-0 text-[11px] tabular-nums text-(--color-text-dim)"
+          >
             {currentMatchIdx + 1}/{matchMarks.length}
           </span>
           <button
@@ -277,8 +316,17 @@
             title="Previous match (Shift+Enter)"
             aria-label="Previous match"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 10l4-4 4 4"/>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M4 10l4-4 4 4" />
             </svg>
           </button>
           <button
@@ -287,12 +335,23 @@
             title="Next match (Enter)"
             aria-label="Next match"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 6l4 4 4-4"/>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M4 6l4 4 4-4" />
             </svg>
           </button>
         {:else if docSearchQuery.trim()}
-          <span class="shrink-0 text-[11px] text-(--color-text-dim)">No matches</span>
+          <span class="shrink-0 text-[11px] text-(--color-text-dim)"
+            >No matches</span
+          >
         {/if}
       </div>
     {/if}

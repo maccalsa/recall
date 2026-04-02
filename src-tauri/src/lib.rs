@@ -1,5 +1,10 @@
+mod context;
+
+use context::{detect_active_window, load_mappings, resolve_mapping, ContextPayload};
 use std::path::PathBuf;
-use tauri::Manager;
+use std::sync::Mutex;
+use std::time::Instant;
+use tauri::{Emitter, Manager};
 
 fn config_dir() -> PathBuf {
     dirs::config_dir()
@@ -11,13 +16,55 @@ fn cheats_dir() -> PathBuf {
     config_dir().join("cheats")
 }
 
+static LAST_SHOW: Mutex<Option<Instant>> = Mutex::new(None);
+const DOUBLE_PRESS_MS: u128 = 500;
+
+fn show_with_context(app: &tauri::AppHandle) {
+    let window_class = detect_active_window();
+
+    let mappings = load_mappings(&config_dir());
+    let mapped_cheat = window_class
+        .as_ref()
+        .and_then(|wc| resolve_mapping(&mappings, wc))
+        .filter(|filename| cheats_dir().join(filename).exists());
+
+    let now = Instant::now();
+    let is_double_press = LAST_SHOW
+        .lock()
+        .ok()
+        .and_then(|guard| *guard)
+        .map(|prev| now.duration_since(prev).as_millis() < DOUBLE_PRESS_MS)
+        .unwrap_or(false);
+
+    if let Ok(mut guard) = LAST_SHOW.lock() {
+        *guard = Some(now);
+    }
+
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+
+    let payload = ContextPayload {
+        window_class,
+        mapped_cheat,
+        is_double_press,
+    };
+    let _ = app.emit("recall://context", payload);
+}
+
+fn hide_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+}
+
 fn toggle_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         if window.is_visible().unwrap_or(false) {
-            let _ = window.hide();
+            hide_window(app);
         } else {
-            let _ = window.show();
-            let _ = window.set_focus();
+            show_with_context(app);
         }
     }
 }
@@ -133,6 +180,22 @@ fn read_config() -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+fn detect_context() -> ContextPayload {
+    let window_class = detect_active_window();
+    let mappings = load_mappings(&config_dir());
+    let mapped_cheat = window_class
+        .as_ref()
+        .and_then(|wc| resolve_mapping(&mappings, wc))
+        .filter(|filename| cheats_dir().join(filename).exists());
+
+    ContextPayload {
+        window_class,
+        mapped_cheat,
+        is_double_press: false,
+    }
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -186,6 +249,7 @@ pub fn run() {
             read_history,
             write_history,
             read_config,
+            detect_context,
         ])
         .build(tauri::generate_context!())
         .expect("error building tauri application");
