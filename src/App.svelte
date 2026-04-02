@@ -21,6 +21,8 @@
   let docSearchActive = $state(false);
   let docSearchQuery = $state("");
   let sheetEl: HTMLElement | undefined = $state();
+  let matchMarks: HTMLElement[] = $state([]);
+  let currentMatchIdx = $state(-1);
 
   async function init() {
     if (!isTauri) {
@@ -85,6 +87,8 @@
         parent.normalize();
       }
     });
+    matchMarks = [];
+    currentMatchIdx = -1;
   }
 
   function highlightMatches(query: string) {
@@ -107,7 +111,7 @@
     }
 
     const lowerQuery = query.toLowerCase();
-    let firstMark: HTMLElement | null = null;
+    const marks: HTMLElement[] = [];
 
     for (const textNode of nodes) {
       const text = textNode.textContent ?? "";
@@ -129,16 +133,50 @@
       if (after) parent.insertBefore(document.createTextNode(after), textNode);
       parent.removeChild(textNode);
 
-      if (!firstMark) firstMark = mark;
+      marks.push(mark);
     }
 
-    firstMark?.scrollIntoView({ behavior: "smooth", block: "center" });
+    matchMarks = marks;
+    if (marks.length > 0) {
+      currentMatchIdx = 0;
+      setActiveMatch(0);
+    }
   }
 
-  $effect(() => {
-    if (docSearchActive) {
-      highlightMatches(docSearchQuery);
+  function setActiveMatch(idx: number) {
+    for (const m of matchMarks) m.classList.remove("active");
+    if (idx >= 0 && idx < matchMarks.length) {
+      matchMarks[idx].classList.add("active");
+      matchMarks[idx].scrollIntoView({ behavior: "smooth", block: "center" });
     }
+  }
+
+  function nextMatch() {
+    if (matchMarks.length === 0) return;
+    currentMatchIdx = (currentMatchIdx + 1) % matchMarks.length;
+    setActiveMatch(currentMatchIdx);
+  }
+
+  function prevMatch() {
+    if (matchMarks.length === 0) return;
+    currentMatchIdx =
+      (currentMatchIdx - 1 + matchMarks.length) % matchMarks.length;
+    setActiveMatch(currentMatchIdx);
+  }
+
+  let debounceTimer: number | null = null;
+
+  $effect(() => {
+    const q = docSearchQuery;
+    const active = docSearchActive;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (!active) return;
+    debounceTimer = window.setTimeout(() => {
+      highlightMatches(q);
+    }, 150);
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   });
 
   function handleKeydown(event: KeyboardEvent) {
@@ -211,15 +249,51 @@
 
     {#if docSearchActive}
       <!-- svelte-ignore a11y_autofocus -->
-      <div class="doc-search-bar border-b border-(--color-border) px-3 py-1.5">
+      <div
+        class="doc-search-bar flex items-center gap-2 border-b border-(--color-border) px-3 py-1.5"
+      >
         <input
           type="text"
           bind:value={docSearchQuery}
           placeholder="Find in document…"
           spellcheck="false"
-          class="w-full rounded bg-(--color-surface-dim) px-2.5 py-1 text-xs text-(--color-text) outline-none ring-1 ring-(--color-border) placeholder:text-(--color-text-dim) focus:ring-(--color-accent)"
+          class="min-w-0 flex-1 rounded bg-(--color-surface-dim) px-2.5 py-1 text-xs text-(--color-text) outline-none ring-1 ring-(--color-border) placeholder:text-(--color-text-dim) focus:ring-(--color-accent)"
           autofocus
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (e.shiftKey) prevMatch();
+              else nextMatch();
+            }
+          }}
         />
+        {#if matchMarks.length > 0}
+          <span class="shrink-0 text-[11px] tabular-nums text-(--color-text-dim)">
+            {currentMatchIdx + 1}/{matchMarks.length}
+          </span>
+          <button
+            class="rounded p-0.5 text-(--color-text-dim) hover:bg-(--color-surface-bright) hover:text-(--color-text)"
+            onclick={prevMatch}
+            title="Previous match (Shift+Enter)"
+            aria-label="Previous match"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 10l4-4 4 4"/>
+            </svg>
+          </button>
+          <button
+            class="rounded p-0.5 text-(--color-text-dim) hover:bg-(--color-surface-bright) hover:text-(--color-text)"
+            onclick={nextMatch}
+            title="Next match (Enter)"
+            aria-label="Next match"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 6l4 4 4-4"/>
+            </svg>
+          </button>
+        {:else if docSearchQuery.trim()}
+          <span class="shrink-0 text-[11px] text-(--color-text-dim)">No matches</span>
+        {/if}
       </div>
     {/if}
 

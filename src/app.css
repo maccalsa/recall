@@ -273,8 +273,14 @@ html.dark .shiki span {
 /* ── In-document search highlights ── */
 
 mark.doc-search-hit {
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
   color: inherit;
   border-radius: 2px;
   padding: 0 1px;
+}
+
+mark.doc-search-hit.active {
+  background: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  outline: 1.5px solid var(--color-accent);
+  outline-offset: 0.5px;
 }
