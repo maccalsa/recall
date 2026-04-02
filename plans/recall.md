@@ -77,15 +77,15 @@ The palette view and sheet view are two states of the same window. Backspace fro
 
 ### Acceptance criteria
 
-- [ ] All `.md` files in `~/.config/recall/cheats/` are indexed on startup
-- [ ] YAML frontmatter `title` and `tags` fields are parsed and searchable
-- [ ] H2 section headings within each file are independently searchable
-- [ ] Typing in the search input produces fuzzy-matched results in < 10ms
-- [ ] Arrow keys navigate the result list, Enter opens the selected sheet
-- [ ] Backspace on empty search input in sheet view returns to palette
-- [ ] Empty search input shows "recently viewed" items (persisted to `history.json`)
-- [ ] Pinned cheats (stored in config) appear above search results
-- [ ] Tab or Ctrl+K activates in-document search when a sheet is open (user story 11)
+- [x] All `.md` files in `~/.config/recall/cheats/` are indexed on startup
+- [x] YAML frontmatter `title` and `tags` fields are parsed and searchable
+- [x] H2 section headings within each file are independently searchable
+- [x] Typing in the search input produces fuzzy-matched results in < 10ms
+- [x] Arrow keys navigate the result list, Enter opens the selected sheet
+- [x] Backspace on empty search input in sheet view returns to palette
+- [x] Empty search input shows "recently viewed" items (persisted to `history.json`)
+- [x] Pinned cheats (stored in config) appear above search results
+- [x] Tab or Ctrl+K activates in-document search when a sheet is open (user story 11)
 
 ---
 

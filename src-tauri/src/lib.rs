@@ -1,11 +1,14 @@
 use std::path::PathBuf;
 use tauri::Manager;
 
-fn cheats_dir() -> PathBuf {
+fn config_dir() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("recall")
-        .join("cheats")
+}
+
+fn cheats_dir() -> PathBuf {
+    config_dir().join("cheats")
 }
 
 fn toggle_main_window(app: &tauri::AppHandle) {
@@ -101,6 +104,35 @@ fn list_cheat_files() -> Result<Vec<String>, String> {
     Ok(files)
 }
 
+#[tauri::command]
+fn read_history() -> Result<String, String> {
+    let path = config_dir().join("history.json");
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => Ok(contents),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok("[]".to_string()),
+        Err(e) => Err(format!("Failed to read history: {e}")),
+    }
+}
+
+#[tauri::command]
+fn write_history(json: String) -> Result<(), String> {
+    let dir = config_dir();
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create config directory: {e}"))?;
+    std::fs::write(dir.join("history.json"), json)
+        .map_err(|e| format!("Failed to write history: {e}"))
+}
+
+#[tauri::command]
+fn read_config() -> Result<String, String> {
+    let path = config_dir().join("config.json");
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => Ok(contents),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok("{}".to_string()),
+        Err(e) => Err(format!("Failed to read config: {e}")),
+    }
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -151,6 +183,9 @@ pub fn run() {
             toggle_window,
             read_cheat_file,
             list_cheat_files,
+            read_history,
+            write_history,
+            read_config,
         ])
         .build(tauri::generate_context!())
         .expect("error building tauri application");
