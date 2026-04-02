@@ -1,8 +1,10 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
 
+  const isTauri = "__TAURI_INTERNALS__" in window;
+
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && isTauri) {
       getCurrentWindow().hide();
     }
   }

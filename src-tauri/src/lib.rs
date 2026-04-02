@@ -1,7 +1,7 @@
+use std::path::PathBuf;
 use tauri::Manager;
 
-#[tauri::command]
-fn toggle_window(app: tauri::AppHandle) {
+fn toggle_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
@@ -12,10 +12,63 @@ fn toggle_window(app: tauri::AppHandle) {
     }
 }
 
+pub fn socket_path() -> PathBuf {
+    let dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
+    PathBuf::from(dir).join("recall.sock")
+}
+
+pub fn send_toggle() -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::net::UnixStream;
+
+    let mut stream = UnixStream::connect(socket_path())?;
+    stream.write_all(b"toggle")?;
+    Ok(())
+}
+
+fn start_ipc_listener(app_handle: tauri::AppHandle) {
+    use std::io::Read;
+    use std::os::unix::net::UnixListener;
+
+    let path = socket_path();
+    let _ = std::fs::remove_file(&path);
+
+    let listener = match UnixListener::bind(&path) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("Failed to bind IPC socket at {}: {e}", path.display());
+            return;
+        }
+    };
+
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            match stream {
+                Ok(mut stream) => {
+                    let mut buf = [0u8; 64];
+                    if let Ok(n) = stream.read(&mut buf) {
+                        if std::str::from_utf8(&buf[..n]).unwrap_or("").trim() == "toggle" {
+                            toggle_main_window(&app_handle);
+                        }
+                    }
+                }
+                Err(e) => eprintln!("IPC connection error: {e}"),
+            }
+        }
+    });
+}
+
+#[tauri::command]
+fn toggle_window(app: tauri::AppHandle) {
+    toggle_main_window(&app);
+}
+
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
+            start_ipc_listener(app.handle().clone());
+
             #[cfg(desktop)]
             {
                 use tauri_plugin_global_shortcut::ShortcutState;
@@ -25,22 +78,44 @@ pub fn run() {
                         .with_shortcut("CommandOrControl+Shift+R")?
                         .with_handler(|app, _shortcut, event| {
                             if event.state == ShortcutState::Pressed {
-                                if let Some(window) = app.get_webview_window("main") {
-                                    if window.is_visible().unwrap_or(false) {
-                                        let _ = window.hide();
-                                    } else {
-                                        let _ = window.show();
-                                        let _ = window.set_focus();
-                                    }
-                                }
+                                toggle_main_window(app);
                             }
                         })
                         .build(),
                 )?;
             }
+
+            #[cfg(desktop)]
+            {
+                use tauri::menu::{Menu, MenuItem};
+                use tauri::tray::TrayIconBuilder;
+
+                let toggle_item =
+                    MenuItem::with_id(app, "toggle", "Toggle Recall", true, None::<&str>)?;
+                let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+                let menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
+
+                TrayIconBuilder::new()
+                    .icon(app.default_window_icon().unwrap().clone())
+                    .menu(&menu)
+                    .show_menu_on_left_click(true)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "toggle" => toggle_main_window(app),
+                        "quit" => app.exit(0),
+                        _ => {}
+                    })
+                    .build(app)?;
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![toggle_window])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error building tauri application");
+
+    app.run(|_app, event| {
+        if let tauri::RunEvent::Exit = event {
+            let _ = std::fs::remove_file(socket_path());
+        }
+    });
 }
