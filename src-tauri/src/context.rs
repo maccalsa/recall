@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 // ── Payload emitted to the frontend on every show ──
@@ -46,9 +46,7 @@ fn detect_x11() -> Option<String> {
 }
 
 fn detect_wayland() -> Option<String> {
-    detect_sway()
-        .or_else(detect_hyprland)
-        .or_else(detect_gnome)
+    detect_sway().or_else(detect_hyprland).or_else(detect_gnome)
 }
 
 fn detect_sway() -> Option<String> {
@@ -81,7 +79,11 @@ fn find_sway_focused_node(node: &serde_json::Value) -> Option<String> {
             return Some(found);
         }
     }
-    for child in node.get("floating_nodes").and_then(|v| v.as_array()).unwrap_or(&vec![]) {
+    for child in node
+        .get("floating_nodes")
+        .and_then(|v| v.as_array())
+        .unwrap_or(&vec![])
+    {
         if let Some(found) = find_sway_focused_node(child) {
             return Some(found);
         }
@@ -102,11 +104,10 @@ fn detect_hyprland() -> Option<String> {
 }
 
 fn detect_gnome() -> Option<String> {
-    if std::env::var("XDG_CURRENT_DESKTOP")
+    if !std::env::var("XDG_CURRENT_DESKTOP")
         .unwrap_or_default()
         .to_lowercase()
         .contains("gnome")
-        == false
     {
         return None;
     }
@@ -143,7 +144,11 @@ fn detect_gnome() -> Option<String> {
         return None;
     }
     let class = &output[start..end];
-    if class.is_empty() { None } else { Some(class.to_string()) }
+    if class.is_empty() {
+        None
+    } else {
+        Some(class.to_string())
+    }
 }
 
 // ── App-to-cheat-sheet mapping ──
@@ -161,7 +166,7 @@ pub struct MappingEntry {
     pub cheat: String,
 }
 
-pub fn load_mappings(config_dir: &PathBuf) -> AppMappings {
+pub fn load_mappings(config_dir: &Path) -> AppMappings {
     let path = config_dir.join("app-mappings.yaml");
     std::fs::read_to_string(&path)
         .ok()

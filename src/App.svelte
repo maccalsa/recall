@@ -5,12 +5,25 @@
   import type MiniSearch from "minisearch";
   import SheetView from "./lib/SheetView.svelte";
   import PaletteView from "./lib/PaletteView.svelte";
-  import { loadAndIndex, type CheatDoc } from "./lib/search";
-  import { recordAccess } from "./lib/history";
+  import WelcomeView from "./lib/WelcomeView.svelte";
+  import SettingsView from "./lib/SettingsView.svelte";
+  import {
+    loadAndIndex,
+    upsertInIndex,
+    removeFromIndex,
+    type CheatDoc,
+  } from "./lib/search";
+  import { recordAccess, invalidateConfigCache } from "./lib/history";
 
   const isTauri = "__TAURI_INTERNALS__" in window;
 
-  type View = "loading" | "palette" | "sheet" | "error";
+  type View =
+    | "loading"
+    | "welcome"
+    | "palette"
+    | "sheet"
+    | "settings"
+    | "error";
 
   let view: View = $state("loading");
   let errorMsg = $state("");
@@ -33,6 +46,15 @@
     is_double_press: boolean;
   }
 
+  interface CheatChangedPayload {
+    kind: "upsert" | "delete";
+    filename: string;
+  }
+
+  interface ConfigChangedPayload {
+    file: string;
+  }
+
   async function init() {
     if (!isTauri) {
       errorMsg = "Not running in Tauri — cannot load cheat files.";
@@ -40,10 +62,11 @@
       return;
     }
     try {
+      const firstRun = await invoke<boolean>("is_first_run");
       const result = await loadAndIndex();
       index = result.index;
       docs = result.docs;
-      view = "palette";
+      view = firstRun ? "welcome" : "palette";
     } catch (e) {
       errorMsg = String(e);
       view = "error";
@@ -52,12 +75,29 @@
     listen<ContextPayload>("recall://context", (event) => {
       handleContext(event.payload);
     });
+
+    listen<CheatChangedPayload>("recall://cheat-changed", (event) => {
+      handleCheatChanged(event.payload);
+    });
+
+    listen<ConfigChangedPayload>("recall://config-changed", (event) => {
+      handleConfigChanged(event.payload);
+    });
+
+    listen("recall://open-settings", () => {
+      view = "settings";
+    });
+
+    listen("recall://open-palette", () => {
+      paletteQuery = "";
+      view = "palette";
+    });
   }
 
   init();
 
   async function handleContext(ctx: ContextPayload) {
-    if (view === "loading" || view === "error") return;
+    if (view === "loading" || view === "error" || view === "welcome") return;
 
     if (ctx.is_double_press && lastViewedFile) {
       openSheet(lastViewedFile);
@@ -71,6 +111,31 @@
 
     paletteQuery = ctx.window_class ?? "";
     view = "palette";
+  }
+
+  async function handleCheatChanged(payload: CheatChangedPayload) {
+    if (!index) return;
+
+    if (payload.kind === "upsert") {
+      docs = await upsertInIndex(index, docs, payload.filename);
+      if (view === "sheet" && activeFile === payload.filename) {
+        const raw = await invoke<string>("read_cheat_file", {
+          filename: payload.filename,
+        });
+        activeMarkdown = raw;
+      }
+    } else if (payload.kind === "delete") {
+      docs = removeFromIndex(index, docs, payload.filename);
+      if (view === "sheet" && activeFile === payload.filename) {
+        backToPalette();
+      }
+    }
+  }
+
+  function handleConfigChanged(payload: ConfigChangedPayload) {
+    if (payload.file === "config.json") {
+      invalidateConfigCache();
+    }
   }
 
   async function openSheet(filename: string) {
@@ -213,6 +278,11 @@
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
+      if (view === "settings") {
+        invalidateConfigCache();
+        view = "palette";
+        return;
+      }
       if (docSearchActive) {
         toggleDocSearch();
         return;
@@ -243,6 +313,8 @@
     <div class="flex flex-1 items-center justify-center">
       <span class="text-sm text-(--color-text-dim)">Loading…</span>
     </div>
+  {:else if view === "welcome"}
+    <WelcomeView ondismiss={() => (view = "palette")} />
   {:else if view === "error"}
     <div class="flex flex-1 flex-col items-center justify-center gap-3 p-8">
       <h1 class="text-xl font-bold text-(--color-accent)">Recall</h1>
@@ -256,6 +328,13 @@
         >
       </p>
     </div>
+  {:else if view === "settings"}
+    <SettingsView
+      onclose={() => {
+        invalidateConfigCache();
+        view = "palette";
+      }}
+    />
   {:else if view === "palette" && index}
     <PaletteView
       {index}

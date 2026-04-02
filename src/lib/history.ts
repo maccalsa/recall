@@ -77,6 +77,10 @@ export function computeHistoryStats(events: AccessEvent[]): HistoryStats {
   return { frequency, lastAccess };
 }
 
+export function invalidateConfigCache(): void {
+  configCache = null;
+}
+
 export async function loadConfig(): Promise<Config> {
   if (configCache) return configCache;
   const json = await invoke<string>("read_config");

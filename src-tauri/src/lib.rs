@@ -1,4 +1,5 @@
 mod context;
+mod watcher;
 
 use context::{detect_active_window, load_mappings, resolve_mapping, ContextPayload};
 use std::path::PathBuf;
@@ -123,8 +124,7 @@ fn toggle_window(app: tauri::AppHandle) {
 #[tauri::command]
 fn read_cheat_file(filename: String) -> Result<String, String> {
     let path = cheats_dir().join(&filename);
-    std::fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read {}: {e}", path.display()))
+    std::fs::read_to_string(&path).map_err(|e| format!("Failed to read {}: {e}", path.display()))
 }
 
 #[tauri::command]
@@ -139,9 +139,7 @@ fn list_cheat_files() -> Result<Vec<String>, String> {
             let entry = entry.ok()?;
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("md") {
-                path.file_name()
-                    .and_then(|n| n.to_str())
-                    .map(String::from)
+                path.file_name().and_then(|n| n.to_str()).map(String::from)
             } else {
                 None
             }
@@ -164,8 +162,7 @@ fn read_history() -> Result<String, String> {
 #[tauri::command]
 fn write_history(json: String) -> Result<(), String> {
     let dir = config_dir();
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("Failed to create config directory: {e}"))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create config directory: {e}"))?;
     std::fs::write(dir.join("history.json"), json)
         .map_err(|e| format!("Failed to write history: {e}"))
 }
@@ -178,6 +175,70 @@ fn read_config() -> Result<String, String> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok("{}".to_string()),
         Err(e) => Err(format!("Failed to read config: {e}")),
     }
+}
+
+fn setup_first_run(app: &tauri::AppHandle) -> bool {
+    let cheats = cheats_dir();
+    let config = config_dir();
+    let _ = std::fs::create_dir_all(&cheats);
+    let _ = std::fs::create_dir_all(&config);
+
+    let has_md_files = std::fs::read_dir(&cheats)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .any(|e| e.path().extension().and_then(|ext| ext.to_str()) == Some("md"))
+        })
+        .unwrap_or(false);
+
+    if has_md_files {
+        return false;
+    }
+
+    let resource_dir = match app.path().resource_dir() {
+        Ok(dir) => dir,
+        Err(_) => return false,
+    };
+
+    if let Ok(entries) = std::fs::read_dir(&resource_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = match path.file_name().and_then(|n| n.to_str()) {
+                Some(n) => n.to_string(),
+                None => continue,
+            };
+
+            if name.ends_with(".md") {
+                let dest = cheats.join(&name);
+                let _ = std::fs::copy(&path, &dest);
+            } else if name == "app-mappings.yaml" {
+                let dest = config.join(&name);
+                if !dest.exists() {
+                    let _ = std::fs::copy(&path, &dest);
+                }
+            }
+        }
+    }
+
+    true
+}
+
+#[tauri::command]
+fn is_first_run() -> bool {
+    let marker = config_dir().join(".first-run-done");
+    if marker.exists() {
+        return false;
+    }
+    let _ = std::fs::write(&marker, "");
+    true
+}
+
+#[tauri::command]
+fn write_config(json: String) -> Result<(), String> {
+    let dir = config_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create config directory: {e}"))?;
+    std::fs::write(dir.join("config.json"), json)
+        .map_err(|e| format!("Failed to write config: {e}"))
 }
 
 #[tauri::command]
@@ -202,6 +263,10 @@ pub fn run() {
         .setup(|app| {
             start_ipc_listener(app.handle().clone());
 
+            setup_first_run(app.handle());
+
+            watcher::start_file_watcher(app.handle().clone(), config_dir(), cheats_dir());
+
             #[cfg(desktop)]
             {
                 use tauri_plugin_global_shortcut::ShortcutState;
@@ -220,20 +285,54 @@ pub fn run() {
 
             #[cfg(desktop)]
             {
-                use tauri::menu::{Menu, MenuItem};
+                use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
                 use tauri::tray::TrayIconBuilder;
 
-                let toggle_item =
-                    MenuItem::with_id(app, "toggle", "Toggle Recall", true, None::<&str>)?;
+                let palette_item =
+                    MenuItem::with_id(app, "palette", "Open Palette", true, None::<&str>)?;
+                let context_item = MenuItem::with_id(
+                    app,
+                    "context",
+                    "Open Current App Cheat",
+                    true,
+                    None::<&str>,
+                )?;
+                let settings_item =
+                    MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
+                let sep = PredefinedMenuItem::separator(app)?;
                 let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-                let menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
+                let menu = Menu::with_items(
+                    app,
+                    &[
+                        &palette_item,
+                        &context_item,
+                        &sep,
+                        &settings_item,
+                        &sep,
+                        &quit_item,
+                    ],
+                )?;
 
                 TrayIconBuilder::new()
                     .icon(app.default_window_icon().unwrap().clone())
                     .menu(&menu)
                     .show_menu_on_left_click(true)
                     .on_menu_event(|app, event| match event.id.as_ref() {
-                        "toggle" => toggle_main_window(app),
+                        "palette" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                            let _ = app.emit("recall://open-palette", ());
+                        }
+                        "context" => show_with_context(app),
+                        "settings" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                            let _ = app.emit("recall://open-settings", ());
+                        }
                         "quit" => app.exit(0),
                         _ => {}
                     })
@@ -249,7 +348,9 @@ pub fn run() {
             read_history,
             write_history,
             read_config,
+            write_config,
             detect_context,
+            is_first_run,
         ])
         .build(tauri::generate_context!())
         .expect("error building tauri application");

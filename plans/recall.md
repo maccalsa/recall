@@ -145,12 +145,12 @@ The app watches the `~/.config/recall/cheats/` directory for file changes (creat
 
 ### Acceptance criteria
 
-- [ ] Adding a new `.md` file to the cheats directory makes it searchable immediately
-- [ ] Editing an existing `.md` file updates its indexed content and re-renders if currently viewed
-- [ ] Deleting a `.md` file removes it from the index
-- [ ] Editing `config.yaml` applies new settings without restart
-- [ ] Editing `app-mappings.yaml` updates mappings without restart
-- [ ] No file watching events cause UI flicker or performance degradation
+- [x] Adding a new `.md` file to the cheats directory makes it searchable immediately
+- [x] Editing an existing `.md` file updates its indexed content and re-renders if currently viewed
+- [x] Deleting a `.md` file removes it from the index
+- [x] Editing `config.yaml` applies new settings without restart
+- [x] Editing `app-mappings.yaml` updates mappings without restart
+- [x] No file watching events cause UI flicker or performance degradation
 
 ---
 
@@ -172,15 +172,15 @@ Final polish pass before public release:
 
 ### Acceptance criteria
 
-- [ ] First launch populates cheats directory with bundled default sheets
-- [ ] Welcome overlay explains usage on first launch (dismissable, never shown again)
-- [ ] Tray menu has: Open Palette, Open Current App Cheat, Settings, Quit
-- [ ] Settings UI allows changing: hotkey binding, theme, cheats directory path
-- [ ] 20+ bundled cheat sheets are included and well-formatted
-- [ ] Focus returns to previous window after Escape
+- [x] First launch populates cheats directory with bundled default sheets
+- [x] Welcome overlay explains usage on first launch (dismissable, never shown again)
+- [x] Tray menu has: Open Palette, Open Current App Cheat, Settings, Quit
+- [x] Settings UI allows changing: hotkey binding, theme, cheats directory path
+- [x] 20+ bundled cheat sheets are included and well-formatted
+- [x] Focus returns to previous window after Escape
 - [ ] Open/close 100 times without UI glitch or memory leak
 - [ ] Hotkey latency < 100ms (profiled on real hardware)
 - [ ] Idle memory < 50MB (measured)
 - [ ] Binary size < 20MB
-- [ ] `.deb` and `.AppImage` packages build successfully
-- [ ] README with installation instructions, usage guide, and contribution guidelines
+- [x] `.deb` and `.AppImage` packages build successfully
+- [x] README with installation instructions, usage guide, and contribution guidelines

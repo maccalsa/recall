@@ -23,18 +23,37 @@ function extractSections(body: string): string[] {
   return [...body.matchAll(H2_REGEX)].map((m) => m[1].trim());
 }
 
+const INDEX_OPTIONS = {
+  fields: ["title", "tags", "sections"],
+  storeFields: ["filename", "title"],
+  searchOptions: {
+    boost: { title: 3, tags: 2, sections: 1 },
+    fuzzy: 0.2,
+    prefix: true,
+  },
+};
+
 function buildIndex(docs: CheatDoc[]): MiniSearch<CheatDoc> {
-  const index = new MiniSearch<CheatDoc>({
-    fields: ["title", "tags", "sections"],
-    storeFields: ["filename", "title"],
-    searchOptions: {
-      boost: { title: 3, tags: 2, sections: 1 },
-      fuzzy: 0.2,
-      prefix: true,
-    },
-  });
+  const index = new MiniSearch<CheatDoc>(INDEX_OPTIONS);
   index.addAll(docs);
   return index;
+}
+
+function parseCheatFile(filename: string, raw: string): CheatDoc {
+  const { frontmatter, body } = parseFrontmatter(raw);
+
+  const title =
+    typeof frontmatter.title === "string"
+      ? frontmatter.title
+      : filename.replace(/\.md$/, "");
+
+  const tags = Array.isArray(frontmatter.tags)
+    ? (frontmatter.tags as string[]).join(" ")
+    : "";
+
+  const sections = extractSections(body).join(" ");
+
+  return { id: filename, filename, title, tags, sections };
 }
 
 export async function loadAndIndex(): Promise<{
@@ -46,23 +65,51 @@ export async function loadAndIndex(): Promise<{
 
   for (const filename of filenames) {
     const raw = await invoke<string>("read_cheat_file", { filename });
-    const { frontmatter, body } = parseFrontmatter(raw);
-
-    const title =
-      typeof frontmatter.title === "string"
-        ? frontmatter.title
-        : filename.replace(/\.md$/, "");
-
-    const tags = Array.isArray(frontmatter.tags)
-      ? (frontmatter.tags as string[]).join(" ")
-      : "";
-
-    const sections = extractSections(body).join(" ");
-
-    docs.push({ id: filename, filename, title, tags, sections });
+    docs.push(parseCheatFile(filename, raw));
   }
 
   return { index: buildIndex(docs), docs };
+}
+
+/**
+ * Incrementally adds or updates a single cheat file in the index.
+ * Returns the updated docs array (new reference for Svelte reactivity).
+ */
+export async function upsertInIndex(
+  index: MiniSearch<CheatDoc>,
+  docs: CheatDoc[],
+  filename: string,
+): Promise<CheatDoc[]> {
+  const raw = await invoke<string>("read_cheat_file", { filename });
+  const doc = parseCheatFile(filename, raw);
+
+  const existingIdx = docs.findIndex((d) => d.filename === filename);
+  if (existingIdx !== -1) {
+    index.replace(doc);
+    const updated = [...docs];
+    updated[existingIdx] = doc;
+    return updated;
+  }
+
+  index.add(doc);
+  return [...docs, doc];
+}
+
+/**
+ * Removes a cheat file from the index.
+ * Returns the updated docs array (new reference for Svelte reactivity).
+ */
+export function removeFromIndex(
+  index: MiniSearch<CheatDoc>,
+  docs: CheatDoc[],
+  filename: string,
+): CheatDoc[] {
+  const existing = docs.find((d) => d.filename === filename);
+  if (existing) {
+    index.remove(existing);
+    return docs.filter((d) => d.filename !== filename);
+  }
+  return docs;
 }
 
 export function search(

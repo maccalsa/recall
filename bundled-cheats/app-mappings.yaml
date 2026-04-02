@@ -1,0 +1,15 @@
+mappings:
+  - match: ["code", "Code", "cursor", "Cursor", "visual studio code"]
+    cheat: vscode
+  - match: ["kitty", "alacritty", "foot", "gnome-terminal", "konsole", "xterm", "wezterm", "Terminal", "tilix"]
+    cheat: bash
+  - match: ["vim", "nvim", "Neovim", "gvim"]
+    cheat: vim
+  - match: ["docker", "Docker Desktop"]
+    cheat: docker
+  - match: ["firefox", "Firefox", "Navigator"]
+    cheat: networking
+  - match: ["Slack", "slack"]
+    cheat: bash
+  - match: ["obsidian", "Obsidian"]
+    cheat: regex
