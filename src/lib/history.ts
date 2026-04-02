@@ -9,7 +9,12 @@ export interface Config {
   pinned?: string[];
 }
 
-const MAX_HISTORY = 200;
+export interface HistoryStats {
+  frequency: Map<string, number>;
+  lastAccess: Map<string, number>;
+}
+
+const MAX_HISTORY = 1000;
 
 let historyCache: AccessEvent[] | null = null;
 let configCache: Config | null = null;
@@ -50,6 +55,26 @@ export async function getRecentlyViewed(): Promise<string[]> {
   }
 
   return recent;
+}
+
+export async function getHistoryStats(): Promise<HistoryStats> {
+  const events = await loadHistory();
+  return computeHistoryStats(events);
+}
+
+export function computeHistoryStats(events: AccessEvent[]): HistoryStats {
+  const frequency = new Map<string, number>();
+  const lastAccess = new Map<string, number>();
+
+  for (const { filename, timestamp } of events) {
+    frequency.set(filename, (frequency.get(filename) ?? 0) + 1);
+    const prev = lastAccess.get(filename) ?? 0;
+    if (timestamp > prev) {
+      lastAccess.set(filename, timestamp);
+    }
+  }
+
+  return { frequency, lastAccess };
 }
 
 export async function loadConfig(): Promise<Config> {

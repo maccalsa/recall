@@ -1,6 +1,7 @@
 import MiniSearch, { type SearchResult } from "minisearch";
 import { invoke } from "@tauri-apps/api/core";
 import { parseFrontmatter } from "./markdown";
+import type { HistoryStats } from "./history";
 
 export interface CheatDoc {
   id: string;
@@ -75,4 +76,50 @@ export function search(
     title: r.title as string,
     score: r.score,
   }));
+}
+
+const WEIGHT_RELEVANCE = 0.5;
+const WEIGHT_FREQUENCY = 0.3;
+const WEIGHT_RECENCY = 0.2;
+const RECENCY_HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/**
+ * Combines MiniSearch text relevance with usage history to produce
+ * a weighted ranking: relevance (0.5) + frequency (0.3) + recency (0.2).
+ */
+export function rankedSearch(
+  index: MiniSearch<CheatDoc>,
+  query: string,
+  stats: HistoryStats,
+  now: number = Date.now(),
+): SearchHit[] {
+  const hits = search(index, query);
+  if (hits.length === 0) return hits;
+
+  const maxRelevance = Math.max(...hits.map((h) => h.score));
+  const maxFrequency = Math.max(
+    1,
+    ...hits.map((h) => stats.frequency.get(h.filename) ?? 0),
+  );
+
+  return hits
+    .map((hit) => {
+      const normRelevance = maxRelevance > 0 ? hit.score / maxRelevance : 0;
+
+      const freq = stats.frequency.get(hit.filename) ?? 0;
+      const normFrequency = freq / maxFrequency;
+
+      const lastTs = stats.lastAccess.get(hit.filename) ?? 0;
+      const ageMs = Math.max(0, now - lastTs);
+      const normRecency =
+        lastTs > 0 ? Math.exp((-ageMs * Math.LN2) / RECENCY_HALF_LIFE_MS) : 0;
+
+      const combined =
+        WEIGHT_RELEVANCE * normRelevance +
+        WEIGHT_FREQUENCY * normFrequency +
+        WEIGHT_RECENCY * normRecency;
+
+      return { ...hit, score: combined };
+    })
+    .sort((a, b) => b.score - a.score);
 }

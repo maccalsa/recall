@@ -124,14 +124,14 @@ Integrate a ranking system into search results. Every time a cheat sheet or sect
 
 ### Acceptance criteria
 
-- [ ] Opening a cheat sheet records an access event in `history.json`
-- [ ] Search results are ranked by weighted score (relevance + frequency + recency)
-- [ ] Frequently accessed sheets rank higher than less-used ones for equivalent match quality
-- [ ] Recently accessed sheets rank higher than older ones for equivalent match quality
-- [ ] "Recently viewed" list on empty search reflects actual usage history
-- [ ] Pinned items always appear above ranked results
-- [ ] History file is bounded (e.g., last 1000 events) to prevent unbounded growth
-- [ ] Ranking feels noticeably "right" after a week of usage
+- [x] Opening a cheat sheet records an access event in `history.json`
+- [x] Search results are ranked by weighted score (relevance + frequency + recency)
+- [x] Frequently accessed sheets rank higher than less-used ones for equivalent match quality
+- [x] Recently accessed sheets rank higher than older ones for equivalent match quality
+- [x] "Recently viewed" list on empty search reflects actual usage history
+- [x] Pinned items always appear above ranked results
+- [x] History file is bounded (last 1000 events) to prevent unbounded growth
+- [x] Ranking feels noticeably "right" after a week of usage
 
 ---
 

@@ -1,7 +1,12 @@
 <script lang="ts">
   import type MiniSearch from "minisearch";
-  import { search, type CheatDoc } from "./search";
-  import { getRecentlyViewed, getPinnedFiles } from "./history";
+  import { rankedSearch, type CheatDoc } from "./search";
+  import {
+    getRecentlyViewed,
+    getPinnedFiles,
+    getHistoryStats,
+    type HistoryStats,
+  } from "./history";
 
   interface Props {
     index: MiniSearch<CheatDoc>;
@@ -16,6 +21,10 @@
   let selectedIdx = $state(0);
   let recentFiles: string[] = $state([]);
   let pinnedFiles: string[] = $state([]);
+  let historyStats: HistoryStats = $state({
+    frequency: new Map(),
+    lastAccess: new Map(),
+  });
   let inputEl: HTMLInputElement | undefined = $state();
 
   $effect(() => {
@@ -29,6 +38,7 @@
   $effect(() => {
     getRecentlyViewed().then((r) => (recentFiles = r));
     getPinnedFiles().then((p) => (pinnedFiles = p));
+    getHistoryStats().then((s) => (historyStats = s));
   });
 
   interface DisplayItem {
@@ -39,7 +49,7 @@
 
   const displayItems = $derived.by((): DisplayItem[] => {
     if (query.trim()) {
-      const hits = search(index, query);
+      const hits = rankedSearch(index, query, historyStats);
       const pinnedSet = new Set(pinnedFiles);
       const pinned: DisplayItem[] = [];
       const rest: DisplayItem[] = [];
