@@ -177,6 +177,33 @@ fn read_config() -> Result<String, String> {
     }
 }
 
+fn collect_bundled_resource_files(resource_dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    use std::path::Path;
+
+    fn walk(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, out);
+                continue;
+            }
+            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+                continue;
+            };
+            if name.ends_with(".md") || name == "app-mappings.yaml" {
+                out.push(path);
+            }
+        }
+    }
+
+    let mut paths = Vec::new();
+    walk(resource_dir, &mut paths);
+    paths
+}
+
 fn setup_first_run(app: &tauri::AppHandle) -> bool {
     let cheats = cheats_dir();
     let config = config_dir();
@@ -200,22 +227,17 @@ fn setup_first_run(app: &tauri::AppHandle) -> bool {
         Err(_) => return false,
     };
 
-    if let Ok(entries) = std::fs::read_dir(&resource_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let name = match path.file_name().and_then(|n| n.to_str()) {
-                Some(n) => n.to_string(),
-                None => continue,
-            };
-
-            if name.ends_with(".md") {
-                let dest = cheats.join(&name);
+    for path in collect_bundled_resource_files(&resource_dir) {
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if name.ends_with(".md") {
+            let dest = cheats.join(name);
+            let _ = std::fs::copy(&path, &dest);
+        } else if name == "app-mappings.yaml" {
+            let dest = config.join(name);
+            if !dest.exists() {
                 let _ = std::fs::copy(&path, &dest);
-            } else if name == "app-mappings.yaml" {
-                let dest = config.join(&name);
-                if !dest.exists() {
-                    let _ = std::fs::copy(&path, &dest);
-                }
             }
         }
     }
@@ -360,4 +382,34 @@ pub fn run() {
             let _ = std::fs::remove_file(socket_path());
         }
     });
+}
+
+#[cfg(test)]
+mod bundled_resource_tests {
+    use super::collect_bundled_resource_files;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn collect_finds_nested_cheats_and_mappings() {
+        let base = std::env::temp_dir().join(format!(
+            "recall-bundled-test-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let nested = base.join("_up_").join("bundled-cheats");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join("git.md"), "# git").unwrap();
+        fs::write(nested.join("app-mappings.yaml"), "mappings: []\n").unwrap();
+
+        let mut paths = collect_bundled_resource_files(&base);
+        paths.sort();
+        assert_eq!(paths.len(), 2);
+        assert!(paths[0].ends_with("app-mappings.yaml"));
+        assert!(paths[1].ends_with("git.md"));
+
+        let _ = fs::remove_dir_all(&base);
+    }
 }
