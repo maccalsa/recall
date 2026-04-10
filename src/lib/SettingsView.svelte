@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import { applyRootTheme } from "./theme";
 
   interface Props {
     onclose: () => void;
@@ -25,6 +26,7 @@
   async function loadSettings() {
     const json = await invoke<string>("read_config");
     config = JSON.parse(json) as AppConfig;
+    applyRootTheme(config.theme);
   }
 
   async function saveSettings() {
@@ -96,6 +98,7 @@
               class:text-dim={(config.theme ?? "system") !== opt}
               onclick={() => {
                 config.theme = opt as AppConfig["theme"];
+                applyRootTheme(config.theme);
               }}
             >
               {opt.charAt(0).toUpperCase() + opt.slice(1)}

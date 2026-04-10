@@ -14,6 +14,7 @@
     type CheatDoc,
   } from "./lib/search";
   import { recordAccess, invalidateConfigCache } from "./lib/history";
+  import { applyThemeFromConfigJson } from "./lib/theme";
 
   const isTauri = "__TAURI_INTERNALS__" in window;
 
@@ -62,6 +63,7 @@
       return;
     }
     try {
+      applyThemeFromConfigJson(await invoke<string>("read_config"));
       const firstRun = await invoke<boolean>("is_first_run");
       const result = await loadAndIndex();
       index = result.index;
@@ -135,6 +137,9 @@
   function handleConfigChanged(payload: ConfigChangedPayload) {
     if (payload.file === "config.json") {
       invalidateConfigCache();
+      invoke<string>("read_config")
+        .then(applyThemeFromConfigJson)
+        .catch(() => applyThemeFromConfigJson("{}"));
     }
   }
 
@@ -330,8 +335,13 @@
     </div>
   {:else if view === "settings"}
     <SettingsView
-      onclose={() => {
+      onclose={async () => {
         invalidateConfigCache();
+        try {
+          applyThemeFromConfigJson(await invoke<string>("read_config"));
+        } catch {
+          applyThemeFromConfigJson("{}");
+        }
         view = "palette";
       }}
     />
