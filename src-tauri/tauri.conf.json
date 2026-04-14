@@ -34,7 +34,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage"],
+    "targets": ["deb", "appimage", "dmg"],
+    "macOS": {
+      "signingIdentity": "-"
+    },
     "resources": {
       "../bundled-cheats/": ""
     },

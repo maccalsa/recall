@@ -6,7 +6,7 @@ End-user helpers to install Recall from [GitHub releases](https://github.com/mac
 
 1. **Version** — Set `RECALL_VERSION` in `install_recall.env` to match `src-tauri/tauri.conf.json` → `"version"`, and ensure that tag exists on GitHub with the matching assets.
 2. **Linux assets** — AppImage and `.deb` names follow Tauri: `Recall_<version>_amd64.AppImage` and `Recall_<version>_amd64.deb`.
-3. **macOS** — The DMG flow expects `Recall_<version>_<arch>.dmg` (e.g. `aarch64`, `x86_64`). Add `"dmg"` to `bundle.targets` in `src-tauri/tauri.conf.json` and build on macOS so releases include DMGs.
+3. **macOS** — The DMG flow expects `Recall_<version>_<arch>.dmg`. The **Release** workflow (`.github/workflows/release.yml`) builds a **DMG on `macos-latest`** (Apple Silicon, so **`aarch64`**) and uploads it next to the Linux bundles. Intel-only Macs need a separate `x86_64` build or a universal binary if you add that to CI later.
 
 ## `install_recall.env`
 
