@@ -17,9 +17,27 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-linux:
-    name: Build Linux bundles (.deb + .AppImage)
-    runs-on: ubuntu-22.04
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-22.04
+            bundles: deb,appimage
+            artifact_name: recall-linux-bundles
+            upload_paths: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/appimage/*.AppImage
+              src-tauri/target/release/bundle/appimage/*.appimage
+          - name: macos
+            os: macos-latest
+            bundles: dmg
+            artifact_name: recall-macos-bundles
+            upload_paths: |
+              src-tauri/target/release/bundle/dmg/*.dmg
 
     steps:
       - name: Checkout (release trigger ref)
@@ -86,6 +104,7 @@ jobs:
           workspaces: src-tauri
 
       - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -101,33 +120,24 @@ jobs:
         run: npm ci
 
       - name: Build Tauri app bundles
-        run: npm run tauri build
+        run: npm run tauri -- build --bundles ${{ matrix.bundles }}
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: recall-linux-bundles
-          path: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/appimage/*.appimage
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.upload_paths }}
           if-no-files-found: error
 
       - name: Attach assets to GitHub Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/appimage/*.appimage
+          files: ${{ matrix.upload_paths }}
 
       - name: Create or update release (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.resolve_tag.outputs.resolved_tag }}
-          files: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/appimage/*.appimage
+          files: ${{ matrix.upload_paths }}
