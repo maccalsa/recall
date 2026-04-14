@@ -26,7 +26,25 @@ body,
   color: var(--color-text);
 }
 
+/* System light, unless the user forced dark in Settings */
 @media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]) {
+    @theme {
+      --color-surface: #eff1f5;
+      --color-surface-dim: #e6e9ef;
+      --color-surface-bright: #ccd0da;
+      --color-text: #4c4f69;
+      --color-text-dim: #6c6f85;
+      --color-accent: #1e66f5;
+      --color-accent-dim: #209fb5;
+      --color-border: #bcc0cc;
+      --color-success: #40a02b;
+    }
+  }
+}
+
+/* Explicit light (e.g. dark OS + Recall set to Light) */
+html[data-theme="light"] {
   @theme {
     --color-surface: #eff1f5;
     --color-surface-dim: #e6e9ef;
@@ -40,25 +58,31 @@ body,
   }
 }
 
-/* ── Shiki dual-theme: dark default, light via media query ── */
+/* ── Shiki: match UI theme (config + system) ── */
 
-html.dark .shiki,
-html.dark .shiki span {
+html[data-theme="dark"] .shiki,
+html[data-theme="dark"] .shiki span {
   color: var(--shiki-dark) !important;
   background-color: var(--shiki-dark-bg) !important;
 }
 
 @media (prefers-color-scheme: dark) {
-  .shiki,
-  .shiki span {
+  html:not([data-theme="light"]) .shiki,
+  html:not([data-theme="light"]) .shiki span {
     color: var(--shiki-dark) !important;
     background-color: var(--shiki-dark-bg) !important;
   }
 }
 
+html[data-theme="light"] .shiki,
+html[data-theme="light"] .shiki span {
+  color: var(--shiki-light) !important;
+  background-color: var(--shiki-light-bg) !important;
+}
+
 @media (prefers-color-scheme: light) {
-  .shiki,
-  .shiki span {
+  html:not([data-theme="dark"]) .shiki,
+  html:not([data-theme="dark"]) .shiki span {
     color: var(--shiki-light) !important;
     background-color: var(--shiki-light-bg) !important;
   }
