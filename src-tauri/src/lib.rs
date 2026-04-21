@@ -24,9 +24,11 @@ fn show_with_context(app: &tauri::AppHandle) {
     let window_class = detect_active_window();
 
     let mappings = load_mappings(&config_dir());
-    let mapped_cheat = window_class
+    let resolved = window_class
         .as_ref()
-        .and_then(|wc| resolve_mapping(&mappings, wc))
+        .and_then(|wc| resolve_mapping(&mappings, wc));
+    let mapping_matched = resolved.is_some();
+    let mapped_cheat = resolved
         .filter(|filename| cheats_dir().join(filename).exists());
 
     let now = Instant::now();
@@ -49,6 +51,7 @@ fn show_with_context(app: &tauri::AppHandle) {
     let payload = ContextPayload {
         window_class,
         mapped_cheat,
+        mapping_matched,
         is_double_press,
     };
     let _ = app.emit("recall://context", payload);
@@ -267,14 +270,16 @@ fn write_config(json: String) -> Result<(), String> {
 fn detect_context() -> ContextPayload {
     let window_class = detect_active_window();
     let mappings = load_mappings(&config_dir());
-    let mapped_cheat = window_class
+    let resolved = window_class
         .as_ref()
-        .and_then(|wc| resolve_mapping(&mappings, wc))
-        .filter(|filename| cheats_dir().join(filename).exists());
+        .and_then(|wc| resolve_mapping(&mappings, wc));
+    let mapping_matched = resolved.is_some();
+    let mapped_cheat = resolved.filter(|filename| cheats_dir().join(filename).exists());
 
     ContextPayload {
         window_class,
         mapped_cheat,
+        mapping_matched,
         is_double_press: false,
     }
 }

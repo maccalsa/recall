@@ -9,7 +9,29 @@ mappings:
     cheat: docker
   - match: ["firefox", "Firefox", "Navigator"]
     cheat: networking
+  - match:
+      - "jetbrains-idea"
+      - "jetbrains-idea-ce"
+      - "jetbrains-idea-ue"
+      - "idea"
+      - "idea64"
+      - "pycharm"
+      - "PyCharm"
+      - "pycharm-professional"
+      - "goland"
+      - "GoLand"
+      - "webstorm"
+      - "WebStorm"
+      - "rustrover"
+      - "RustRover"
+      - "clion"
+      - "CLion"
+      - "phpstorm"
+      - "PhpStorm"
+      - "rider"
+      - "Rider"
+    cheat: intellij
   - match: ["Slack", "slack"]
-    cheat: bash
+    cheat: slack
   - match: ["obsidian", "Obsidian"]
     cheat: regex

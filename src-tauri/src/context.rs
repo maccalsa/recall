@@ -7,7 +7,10 @@ use std::process::Command;
 #[derive(Debug, Clone, Serialize)]
 pub struct ContextPayload {
     pub window_class: Option<String>,
+    /// Present only when a mapping matched **and** the cheat file exists under the cheats dir.
     pub mapped_cheat: Option<String>,
+    /// True when `app-mappings.yaml` matched the window class (even if the cheat file is missing).
+    pub mapping_matched: bool,
     pub is_double_press: bool,
 }
 

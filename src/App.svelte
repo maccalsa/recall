@@ -33,6 +33,8 @@
   let activeFile = $state("");
   let activeMarkdown = $state("");
   let paletteQuery = $state("");
+  /** Shown after hotkey: WM class / app id used for mapping; red if no YAML match. */
+  let contextBanner: { text: string; unmatched: boolean } | null = $state(null);
   let lastViewedFile = $state("");
 
   let docSearchActive = $state(false);
@@ -44,6 +46,7 @@
   interface ContextPayload {
     window_class: string | null;
     mapped_cheat: string | null;
+    mapping_matched: boolean;
     is_double_press: boolean;
   }
 
@@ -87,10 +90,12 @@
     });
 
     listen("recall://open-settings", () => {
+      contextBanner = null;
       view = "settings";
     });
 
     listen("recall://open-palette", () => {
+      contextBanner = null;
       paletteQuery = "";
       view = "palette";
     });
@@ -99,6 +104,13 @@
   init();
 
   async function handleContext(ctx: ContextPayload) {
+    const raw = ctx.window_class?.trim();
+    if (raw) {
+      contextBanner = { text: raw, unmatched: !ctx.mapping_matched };
+    } else {
+      contextBanner = null;
+    }
+
     if (view === "loading" || view === "error" || view === "welcome") return;
 
     if (ctx.is_double_press && lastViewedFile) {
@@ -314,6 +326,22 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <main class="flex h-full flex-col rounded-xl bg-(--color-surface) shadow-2xl">
+  {#if contextBanner && view !== "loading" && view !== "error"}
+    <div
+      class="flex min-h-0 shrink-0 items-center gap-2 border-b border-(--color-border) px-3 py-1.5"
+      title="Window class / app id used to resolve app-mappings.yaml"
+    >
+      <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-(--color-text-dim)"
+        >Detected</span
+      >
+      <span
+        class="min-w-0 truncate font-mono text-[11px] leading-tight"
+        class:text-red-500={contextBanner.unmatched}
+        class:text-(--color-text)={!contextBanner.unmatched}
+        >{contextBanner.text}</span
+      >
+    </div>
+  {/if}
   {#if view === "loading"}
     <div class="flex flex-1 items-center justify-center">
       <span class="text-sm text-(--color-text-dim)">Loading…</span>
