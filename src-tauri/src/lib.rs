@@ -28,8 +28,7 @@ fn show_with_context(app: &tauri::AppHandle) {
         .as_ref()
         .and_then(|wc| resolve_mapping(&mappings, wc));
     let mapping_matched = resolved.is_some();
-    let mapped_cheat = resolved
-        .filter(|filename| cheats_dir().join(filename).exists());
+    let mapped_cheat = resolved.filter(|filename| cheats_dir().join(filename).exists());
 
     let now = Instant::now();
     let is_double_press = LAST_SHOW

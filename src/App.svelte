@@ -331,7 +331,8 @@
       class="flex min-h-0 shrink-0 items-center gap-2 border-b border-(--color-border) px-3 py-1.5"
       title="Window class / app id used to resolve app-mappings.yaml"
     >
-      <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-(--color-text-dim)"
+      <span
+        class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-(--color-text-dim)"
         >Detected</span
       >
       <span
